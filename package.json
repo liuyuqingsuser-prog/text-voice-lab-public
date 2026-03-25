@@ -1,7 +1,7 @@
 {
   "name": "text-to-speech-learning-tool",
   "version": "1.0.0",
-  "description": "原创界面的文字转语音学习工具桌面应用",
+  "description": "免费离线版文字转语音桌面应用",
   "main": "main.js",
   "author": "Codex",
   "license": "UNLICENSED",
@@ -13,9 +13,7 @@
     "dist:win": "npm run generate:icons && npm run build:renderer && electron-builder --win portable --x64",
     "dist": "npm run generate:icons && npm run build:renderer && electron-builder --mac zip --win portable --x64"
   },
-  "dependencies": {
-    "microsoft-cognitiveservices-speech-sdk": "^1.44.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "electron": "^37.3.1",
     "electron-builder": "^26.0.12",

@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer, clipboard } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopBridge", {
+  listOfflineVoices() {
+    return ipcRenderer.invoke("list-offline-voices");
+  },
   synthesizeSpeech(payload) {
     return ipcRenderer.invoke("synthesize-speech", payload);
   },

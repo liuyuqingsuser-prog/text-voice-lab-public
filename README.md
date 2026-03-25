@@ -1,15 +1,15 @@
-# Text Voice Lab
+# Text Voice Lab Free
 
-原创界面的桌面端文字转语音工具，参考在线 TTS 工具的常见工作流，但不调用参考网站接口，不冒用参考网站品牌信息。
+免费离线版桌面端文字转语音工具。保留原有的桌面工作流和界面结构，但不再依赖 Azure Speech，不需要填写 Key，直接使用操作系统已安装的本地语音进行合成。
 
 ## 功能
 
-- 输入文本后调用官方 Azure Speech SDK 合成语音
-- 支持多语言发音人、语速和音调调节
-- 支持导出 `MP3` 与 `WAV`
-- 主界面显式标注“第三方学习工具”
-- 显示 SSML 预览，方便排查和二次集成
-- 默认不保存用户输入的 Azure Speech Key
+- 输入文本后使用本机离线语音合成音频
+- 支持读取系统已安装发音人
+- 支持语速调节
+- 支持导出 `WAV`
+- 主界面持续展示合规提示与 AI 标识建议
+- 默认不把文本发送到外部云端语音服务
 
 ## 启动
 
@@ -30,30 +30,19 @@ npm run dist:win
 
 ## 使用说明
 
-1. 在 Azure 创建你自己的 Speech 资源。
-2. 填写 `Speech Key` 与 `Region`。
+1. 确保当前系统已经安装可用的语音包。
+2. 选择本地发音人。
 3. 输入待合成文本并勾选合法使用确认。
-4. 点击“开始合成”，试听后导出音频。
+4. 点击“开始合成”，试听后导出 `WAV` 音频。
 
-## 风险控制思路
+## 说明
 
-- 不内置任何第三方账号、Cookie、共享密钥或参考网站接口。
-- 不使用参考网站名称、Logo、备案信息或“官方”措辞。
-- 通过界面文案持续提示“第三方学习工具”与非官方属性。
-- 要求用户自行确认文本版权、声音使用权和用途合法性。
-- 商业使用前，应自行复核 Azure 平台条款及当地法律要求。
+- 这是纯免费离线版，不需要 Azure Speech Key。
+- 可用发音人与语言数量取决于当前操作系统。
+- 当前版本统一导出 `WAV`，以保证跨平台本地合成更稳定。
 
 ## 配套文档
 
 - Windows 签名方案：`docs/windows-signing-guide.md`
 - 用户协议模板：`legal/TERMS_OF_USE.md`
 - 隐私政策模板：`legal/PRIVACY_POLICY.md`
-
-## 官方参考文档
-
-- Azure Speech 文本转语音：
-  https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech
-- SSML 发音人文档：
-  https://learn.microsoft.com/azure/ai-services/speech-service/speech-synthesis-markup-voice
-- 语音 AI 披露建议：
-  https://learn.microsoft.com/azure/ai-services/responsible-ai/speech-service/disclosure-design-guidance
