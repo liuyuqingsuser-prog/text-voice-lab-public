@@ -3,23 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>文字转语音学习工具</title>
+    <title>Text Voice Lab Free</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">第三方学习工具</p>
-          <h1>文字转语音学习工具</h1>
+          <p class="eyebrow">免费离线版</p>
+          <h1>Text Voice Lab Free</h1>
           <p class="hero-text">
-            参考在线文字转语音工具的常见工作流，做成原创界面的桌面软件。你可以输入文本、选择
-            Azure 官方发音人、调整语速和音调，并导出 <code>MP3</code> 或 <code>WAV</code>
-            音频。
+            保留桌面端文字转语音的熟悉工作流，但改为本地离线发音。你可以输入文本、选择当前系统已安装的
+            发音人、调整语速，并导出 <code>WAV</code> 音频。
           </p>
           <div class="hero-note">
-            本软件不隶属于参考网站，也不会调用参考网站接口；需使用你自己的 Azure Speech
-            资源进行合成。
+            本版本不连接 Azure 或第三方云端语音服务，不需要 Key，适合做纯免费离线版使用。
           </div>
           <div class="hero-links">
             <button id="openTermsBtn" class="ghost-button" type="button">查看用户协议</button>
@@ -27,21 +25,21 @@
           </div>
         </div>
         <div class="hero-metrics">
-          <article class="metric-card">
-            <span class="metric-label">合成引擎</span>
-            <strong>Azure Speech SDK</strong>
-            <p>使用官方 SDK，而不是第三方站点后端。</p>
-          </article>
+            <article class="metric-card">
+              <span class="metric-label">合成引擎</span>
+              <strong>系统离线语音</strong>
+              <p>直接调用操作系统已安装的本地语音，不依赖云端接口。</p>
+            </article>
           <article class="metric-card">
             <span class="metric-label">主界面标识</span>
             <strong>第三方学习工具</strong>
             <p>界面内已持续展示非官方属性与学习用途提示。</p>
           </article>
-          <article class="metric-card">
-            <span class="metric-label">密钥处理</span>
-            <strong>仅本次会话使用</strong>
-            <p>不会自动保存你的 Azure Speech Key 到本地。</p>
-          </article>
+            <article class="metric-card">
+              <span class="metric-label">费用与隐私</span>
+              <strong>无需 Key / 默认离线</strong>
+              <p>不需要 Azure Speech Key，文本默认不发往外部语音服务。</p>
+            </article>
         </div>
       </header>
 
@@ -57,29 +55,19 @@
 
           <div class="form-grid">
             <label class="field">
-              <span class="field-label">Azure Speech Key</span>
-              <input id="keyInput" type="password" placeholder="请输入你自己的 Azure Speech Key" />
-            </label>
-            <label class="field">
-              <span class="field-label">Azure 区域</span>
-              <input id="regionInput" type="text" placeholder="例如：eastasia / southeastasia / eastus" />
-            </label>
-            <label class="field">
               <span class="field-label">发音人</span>
               <select id="voiceSelect"></select>
             </label>
             <label class="field">
               <span class="field-label">导出格式</span>
               <select id="formatSelect">
-                <option value="mp3">MP3（兼容性优先）</option>
-                <option value="wav">WAV（无损输出）</option>
+                <option value="wav">WAV（离线稳定输出）</option>
               </select>
             </label>
           </div>
 
           <p class="credential-note">
-            为降低风险，软件不内置任何第三方账号、Cookie 或共享密钥，你需要自行提供合法可用的
-            Azure Speech 资源。
+            免费离线版依赖当前操作系统已安装的语音包。若想获得更多发音人，请先在系统里安装对应语言声音。
           </p>
 
           <div class="slider-grid">
@@ -103,7 +91,7 @@
             <div class="progress-head">
               <div>
                 <p class="text-title">待合成文本</p>
-                <p class="text-subtitle">支持换行，长文本建议分段处理，避免单次请求过长。</p>
+                <p class="text-subtitle">支持换行，长文本建议分段处理，便于离线生成与试听。</p>
               </div>
               <span id="charCount" class="selected-source">0 / 5000</span>
             </div>
@@ -122,12 +110,12 @@
               <strong id="summaryVoice">未选择</strong>
             </article>
             <article class="summary-card">
-              <span>Azure 区域</span>
-              <strong id="summaryRegion">未填写</strong>
+              <span>离线引擎</span>
+              <strong id="summaryEngine">加载中</strong>
             </article>
             <article class="summary-card">
               <span>导出格式</span>
-              <strong id="summaryFormat">MP3</strong>
+              <strong id="summaryFormat">WAV</strong>
             </article>
             <article class="summary-card">
               <span>文本字数</span>
@@ -156,8 +144,6 @@
             </div>
             <div class="button-row compact">
               <button id="saveAudioBtn" class="secondary-button" type="button" disabled>导出音频</button>
-              <button id="copySsmlBtn" class="secondary-button" type="button" disabled>复制 SSML</button>
-              <button id="saveSsmlBtn" class="ghost-button" type="button" disabled>保存 SSML</button>
             </div>
           </div>
 
@@ -166,7 +152,7 @@
               <div>
                 <p class="result-title">生成结果</p>
                 <p id="audioHint" class="result-hint">
-                  合成完成后，这里会显示试听播放器、文件信息与生成配置。
+                  离线合成完成后，这里会显示试听播放器、文件信息与导出结果。
                 </p>
               </div>
             </div>
@@ -197,35 +183,28 @@
             </div>
           </div>
 
-          <div class="result-board">
-            <div class="progress-head">
-              <h3>SSML 预览</h3>
-              <span class="selected-source">便于排查和二次集成</span>
-            </div>
-            <textarea
-              id="ssmlOutput"
-              class="ssml-output"
-              placeholder="生成后会在这里展示本次提交到 Azure Speech 的 SSML。"
-              spellcheck="false"
-              readonly
-            ></textarea>
+            <div class="result-board">
+              <div class="progress-head">
+                <h3>本地配置预览</h3>
+                <span class="selected-source">展示本次离线合成参数摘要</span>
+              </div>
+              <textarea
+                id="configOutput"
+                class="ssml-output"
+                placeholder="生成后会在这里展示本次离线语音配置摘要。"
+                spellcheck="false"
+                readonly
+              ></textarea>
           </div>
 
           <div class="compliance-card">
             <p class="result-title">合规与风险控制建议</p>
             <ul class="doc-list">
-              <li>本软件仅供学习和效率工具场景使用，不是任何平台或网站的官方客户端。</li>
-              <li>不要在界面、图标、文案中冒用参考网站名称、Logo、备案信息或官方关系表述。</li>
+              <li>本软件为免费离线版，使用系统自带语音，不是任何平台或网站的官方客户端。</li>
+              <li>可用发音人数量与语言覆盖取决于当前设备已安装的系统语音包。</li>
               <li>若用于商业场景，请先自行核验文本版权、声音使用权、平台条款与当地法律要求。</li>
               <li>导出音频默认带有“AI合成”文件名后缀，并自动生成配套说明文件，建议传播时一并保留。</li>
-              <li>
-                官方参考文档：
-                <a href="https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech" target="_blank" rel="noreferrer">Azure Speech 文本转语音</a>
-                /
-                <a href="https://learn.microsoft.com/azure/ai-services/speech-service/speech-synthesis-markup-voice" target="_blank" rel="noreferrer">SSML 发音人文档</a>
-                /
-                <a href="https://learn.microsoft.com/azure/ai-services/responsible-ai/speech-service/disclosure-design-guidance" target="_blank" rel="noreferrer">语音 AI 披露建议</a>
-              </li>
+              <li>当前离线版统一导出 WAV，以减少跨平台打包和本地转换差异。</li>
             </ul>
             <div class="button-row legal-actions">
               <button id="openTermsBtnSecondary" class="secondary-button" type="button">用户协议</button>

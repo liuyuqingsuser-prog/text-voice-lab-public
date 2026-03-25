@@ -1,18 +1,8 @@
-const STORAGE_KEY = "tts-learning-tool-preferences-v1";
+const STORAGE_KEY = "tts-learning-tool-preferences-v2";
 const LEGAL_ACCEPTANCE_KEY = "tts-learning-tool-legal-acceptance-v1";
 const LEGAL_VERSION = "2026-03-25";
 const MAX_LOG_ITEMS = 8;
-
-const VOICES = [
-  { id: "zh-CN-XiaoxiaoNeural", locale: "zh-CN", label: "中文 - 晓晓", note: "温和女声" },
-  { id: "zh-CN-YunxiNeural", locale: "zh-CN", label: "中文 - 云希", note: "青年男声" },
-  { id: "zh-CN-XiaoyiNeural", locale: "zh-CN", label: "中文 - 晓伊", note: "自然女声" },
-  { id: "zh-CN-YunjianNeural", locale: "zh-CN", label: "中文 - 云健", note: "沉稳男声" },
-  { id: "en-US-AvaNeural", locale: "en-US", label: "English - Ava", note: "warm female" },
-  { id: "en-US-BrianNeural", locale: "en-US", label: "English - Brian", note: "calm male" },
-  { id: "ja-JP-NanamiNeural", locale: "ja-JP", label: "日本語 - Nanami", note: "soft female" },
-  { id: "ja-JP-KeitaNeural", locale: "ja-JP", label: "日本語 - Keita", note: "clear male" },
-];
+const DEFAULT_VOICE_ID = "__default__";
 
 const LEGAL_DOCUMENTS = {
   terms: {
@@ -25,8 +15,6 @@ const LEGAL_DOCUMENTS = {
 
 const elements = {
   statusPill: document.getElementById("statusPill"),
-  keyInput: document.getElementById("keyInput"),
-  regionInput: document.getElementById("regionInput"),
   voiceSelect: document.getElementById("voiceSelect"),
   formatSelect: document.getElementById("formatSelect"),
   rateRange: document.getElementById("rateRange"),
@@ -36,19 +24,17 @@ const elements = {
   textInput: document.getElementById("textInput"),
   charCount: document.getElementById("charCount"),
   summaryVoice: document.getElementById("summaryVoice"),
-  summaryRegion: document.getElementById("summaryRegion"),
+  summaryEngine: document.getElementById("summaryEngine"),
   summaryFormat: document.getElementById("summaryFormat"),
   summaryChars: document.getElementById("summaryChars"),
   complianceCheckbox: document.getElementById("complianceCheckbox"),
   synthesizeBtn: document.getElementById("synthesizeBtn"),
   resetBtn: document.getElementById("resetBtn"),
   saveAudioBtn: document.getElementById("saveAudioBtn"),
-  copySsmlBtn: document.getElementById("copySsmlBtn"),
-  saveSsmlBtn: document.getElementById("saveSsmlBtn"),
   audioPlayer: document.getElementById("audioPlayer"),
   audioHint: document.getElementById("audioHint"),
   taskLog: document.getElementById("taskLog"),
-  ssmlOutput: document.getElementById("ssmlOutput"),
+  configOutput: document.getElementById("configOutput"),
   disclosureOutput: document.getElementById("disclosureOutput"),
   openTermsBtn: document.getElementById("openTermsBtn"),
   openPrivacyBtn: document.getElementById("openPrivacyBtn"),
@@ -82,7 +68,19 @@ const state = {
   lastResult: null,
   legalAccepted: false,
   legalAcceptanceRecord: null,
+  voiceCatalog: [],
+  supportsPitch: false,
+  engineLabel: "本地系统离线语音",
 };
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 function setStatus(text, variant = "idle") {
   elements.statusPill.textContent = text;
@@ -92,11 +90,6 @@ function setStatus(text, variant = "idle") {
 function formatSignedPercent(value) {
   const number = Number(value) || 0;
   return `${number >= 0 ? "+" : ""}${number}%`;
-}
-
-function formatSignedHz(value) {
-  const number = Number(value) || 0;
-  return `${number >= 0 ? "+" : ""}${number}Hz`;
 }
 
 function formatFileSize(byteLength) {
@@ -110,12 +103,28 @@ function formatFileSize(byteLength) {
   return `${bytes} B`;
 }
 
-function getVoiceById(id) {
-  return VOICES.find((voice) => voice.id === id) || VOICES[0];
+function getLocaleLabel(locale) {
+  const normalized = String(locale || "system").trim();
+  const localeLabels = {
+    system: "系统默认",
+    "zh-CN": "中文",
+    "en-US": "English",
+    "ja-JP": "日本語",
+  };
+
+  return localeLabels[normalized] || normalized;
 }
 
-function getRegionValue() {
-  return elements.regionInput.value.trim().toLowerCase();
+function getVoiceById(id) {
+  return (
+    state.voiceCatalog.find((voice) => voice.id === id) ||
+    state.voiceCatalog[0] || {
+      id: DEFAULT_VOICE_ID,
+      label: "系统默认语音",
+      locale: "system",
+      note: state.engineLabel,
+    }
+  );
 }
 
 function getTextValue() {
@@ -145,29 +154,28 @@ function syncLegalGate() {
   elements.consentModal.setAttribute("aria-hidden", "false");
 }
 
-function setBusy(value) {
-  state.isBusy = Boolean(value);
+function syncControlAvailability() {
   const hasResult = Boolean(state.lastResult);
   const locked = state.isBusy || !state.legalAccepted;
 
-  elements.keyInput.disabled = locked;
-  elements.regionInput.disabled = locked;
-  elements.voiceSelect.disabled = locked;
-  elements.formatSelect.disabled = locked;
+  elements.voiceSelect.disabled = locked || state.voiceCatalog.length === 0;
+  elements.formatSelect.disabled = true;
   elements.rateRange.disabled = locked;
-  elements.pitchRange.disabled = locked;
+  elements.pitchRange.disabled = true;
   elements.textInput.disabled = locked;
   elements.complianceCheckbox.disabled = locked;
-  elements.synthesizeBtn.disabled = locked;
+  elements.synthesizeBtn.disabled = locked || state.voiceCatalog.length === 0;
   elements.resetBtn.disabled = locked;
   elements.saveAudioBtn.disabled = !hasResult || locked;
-  elements.copySsmlBtn.disabled = !hasResult || locked;
-  elements.saveSsmlBtn.disabled = !hasResult || locked;
+}
+
+function setBusy(value) {
+  state.isBusy = Boolean(value);
+  syncControlAvailability();
 }
 
 function savePreferences() {
   const preferences = {
-    region: getRegionValue(),
     voice: elements.voiceSelect.value,
     format: elements.formatSelect.value,
     rate: elements.rateRange.value,
@@ -185,13 +193,10 @@ function restorePreferences() {
     }
 
     const saved = JSON.parse(raw);
-    if (typeof saved.region === "string") {
-      elements.regionInput.value = saved.region;
-    }
-    if (VOICES.some((voice) => voice.id === saved.voice)) {
+    if (state.voiceCatalog.some((voice) => voice.id === saved.voice)) {
       elements.voiceSelect.value = saved.voice;
     }
-    if (saved.format === "mp3" || saved.format === "wav") {
+    if (saved.format === "wav") {
       elements.formatSelect.value = saved.format;
     }
     if (saved.rate !== undefined) {
@@ -230,10 +235,7 @@ function persistLegalAcceptance() {
     version: LEGAL_VERSION,
     acceptedAt: new Date().toISOString(),
   };
-  localStorage.setItem(
-    LEGAL_ACCEPTANCE_KEY,
-    JSON.stringify(record)
-  );
+  localStorage.setItem(LEGAL_ACCEPTANCE_KEY, JSON.stringify(record));
   state.legalAcceptanceRecord = record;
 }
 
@@ -293,14 +295,9 @@ function renderConsentRecord() {
 }
 
 function populateVoices() {
-  const localeLabels = {
-    "zh-CN": "中文",
-    "en-US": "English",
-    "ja-JP": "日本語",
-  };
   const groups = new Map();
 
-  for (const voice of VOICES) {
+  for (const voice of state.voiceCatalog) {
     const group = groups.get(voice.locale) || [];
     group.push(voice);
     groups.set(voice.locale, group);
@@ -308,22 +305,23 @@ function populateVoices() {
 
   elements.voiceSelect.innerHTML = Array.from(groups.entries())
     .map(([locale, voices]) => {
-      const label = localeLabels[locale] || locale;
       const options = voices
         .map(
           (voice) =>
-            `<option value="${voice.id}">${voice.label} · ${voice.note}</option>`
+            `<option value="${escapeHtml(voice.id)}">${escapeHtml(voice.label)} · ${escapeHtml(
+              voice.note || "系统离线语音"
+            )}</option>`
         )
         .join("");
 
-      return `<optgroup label="${label}">${options}</optgroup>`;
+      return `<optgroup label="${escapeHtml(getLocaleLabel(locale))}">${options}</optgroup>`;
     })
     .join("");
 }
 
 function updateSliderLabels() {
   elements.rateValue.textContent = formatSignedPercent(elements.rateRange.value);
-  elements.pitchValue.textContent = formatSignedHz(elements.pitchRange.value);
+  elements.pitchValue.textContent = "系统默认";
 }
 
 function updateSummary() {
@@ -331,8 +329,8 @@ function updateSummary() {
   const textLength = getTextValue().length;
 
   elements.charCount.textContent = `${textLength} / 5000`;
-  elements.summaryVoice.textContent = `${voice.label} · ${voice.note}`;
-  elements.summaryRegion.textContent = getRegionValue() || "未填写";
+  elements.summaryVoice.textContent = `${voice.label} · ${voice.note || "系统离线语音"}`;
+  elements.summaryEngine.textContent = state.engineLabel;
   elements.summaryFormat.textContent = elements.formatSelect.value.toUpperCase();
   elements.summaryChars.textContent = String(textLength);
 }
@@ -340,7 +338,7 @@ function updateSummary() {
 function renderLog() {
   if (!state.logs.length) {
     elements.taskLog.innerHTML =
-      '<p class="empty-progress">准备就绪，等待你输入文本并发起语音合成。</p>';
+      '<p class="empty-progress">准备就绪，等待你输入文本并发起本地离线语音合成。</p>';
     return;
   }
 
@@ -371,15 +369,6 @@ function addLog(title, message, variant = "info") {
   renderLog();
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 function clearPreviewUrl() {
   if (state.previewUrl) {
     URL.revokeObjectURL(state.previewUrl);
@@ -393,8 +382,8 @@ function clearResult() {
   elements.audioPlayer.removeAttribute("src");
   elements.audioPlayer.load();
   elements.audioHint.textContent =
-    "合成完成后，这里会显示试听播放器、文件信息与生成配置。";
-  elements.ssmlOutput.value = "";
+    "离线合成完成后，这里会显示试听播放器、文件信息与导出结果。";
+  elements.configOutput.value = "";
   elements.disclosureOutput.value = "";
   setBusy(state.isBusy);
 }
@@ -420,8 +409,10 @@ function renderResult(result) {
   state.previewUrl = URL.createObjectURL(blob);
 
   elements.audioPlayer.src = state.previewUrl;
-  elements.audioHint.textContent = `${getVoiceById(result.voice).label} · ${result.extension.toUpperCase()} · ${formatFileSize(result.byteLength)} · ${result.charCount} 字`;
-  elements.ssmlOutput.value = result.ssml;
+  elements.audioHint.textContent = `${result.voiceLabel} · ${result.extension.toUpperCase()} · ${formatFileSize(
+    result.byteLength
+  )} · ${result.charCount} 字`;
+  elements.configOutput.value = result.configPreview || "";
   elements.disclosureOutput.value = result.aiDisclosureText || "";
   setBusy(false);
 }
@@ -493,14 +484,6 @@ function validateForm() {
     throw new Error("请先完成首次启动合规确认。");
   }
 
-  if (!elements.keyInput.value.trim()) {
-    throw new Error("请先填写你自己的 Azure Speech Key。");
-  }
-
-  if (!getRegionValue()) {
-    throw new Error("请先填写 Azure 区域，例如 eastasia。");
-  }
-
   if (!getTextValue()) {
     throw new Error("请输入要合成为语音的文本内容。");
   }
@@ -521,9 +504,8 @@ async function handleSynthesize() {
 
   const voice = getVoiceById(elements.voiceSelect.value);
   const payload = {
-    key: elements.keyInput.value.trim(),
-    region: getRegionValue(),
     voice: voice.id,
+    voiceLabel: voice.label,
     locale: voice.locale,
     format: elements.formatSelect.value,
     rate: Number(elements.rateRange.value),
@@ -534,13 +516,13 @@ async function handleSynthesize() {
   savePreferences();
   setBusy(true);
   setStatus("正在合成", "working");
-  addLog("已提交任务", `正在使用 ${voice.label} 生成 ${elements.formatSelect.value.toUpperCase()} 音频。`);
+  addLog("已提交任务", `正在使用 ${voice.label} 进行本地离线合成。`);
 
   try {
     const result = await window.desktopBridge.synthesizeSpeech(payload);
     renderResult(result);
     setStatus("合成完成", "ready");
-    addLog("合成完成", "已生成音频，并同步生成建议披露的 AI 标识说明。");
+    addLog("合成完成", "已离线生成 WAV 音频，并同步生成建议披露的 AI 标识说明。");
   } catch (error) {
     console.error(error);
     clearResult();
@@ -548,21 +530,20 @@ async function handleSynthesize() {
     setStatus("合成失败", "error");
     addLog(
       "合成失败",
-      error?.message || "Azure Speech 返回异常，请检查 Key、区域、网络或配额设置。",
+      error?.message || "本地离线语音合成失败，请检查系统语音是否可用。",
       "error"
     );
   }
 }
 
 function handleReset() {
-  elements.keyInput.value = "";
   elements.textInput.value = "";
   elements.complianceCheckbox.checked = false;
   clearResult();
   updateSummary();
   updateSliderLabels();
   setStatus("等待输入", "idle");
-  addLog("已清空", "文本和本次生成结果已清空，已保留非敏感偏好设置。");
+  addLog("已清空", "文本和本次生成结果已清空，已保留离线发音与速度偏好。");
 }
 
 async function handleSaveAudio() {
@@ -584,28 +565,42 @@ async function handleSaveAudio() {
   }
 }
 
-async function handleSaveSsml() {
-  if (!state.lastResult) {
-    return;
+async function loadOfflineVoices() {
+  try {
+    const result = await window.desktopBridge.listOfflineVoices();
+    state.voiceCatalog = Array.isArray(result.voices) && result.voices.length
+      ? result.voices
+      : [{
+          id: DEFAULT_VOICE_ID,
+          label: "系统默认语音",
+          locale: "system",
+          note: "当前操作系统默认声音",
+        }];
+    state.engineLabel = result.engineLabel || "本地系统离线语音";
+    state.supportsPitch = Boolean(result.supportsPitch);
+  } catch (error) {
+    console.error(error);
+    state.voiceCatalog = [{
+      id: DEFAULT_VOICE_ID,
+      label: "系统默认语音",
+      locale: "system",
+      note: "当前操作系统默认声音",
+    }];
+    state.engineLabel = "本地系统离线语音";
+    state.supportsPitch = false;
+    addLog("读取语音列表失败", "已回退到系统默认语音，仍可继续尝试离线合成。", "error");
   }
 
-  const result = await window.desktopBridge.saveTextFile({
-    suggestedName: state.lastResult.suggestedName.replace(/\.(mp3|wav)$/i, ".ssml"),
-    content: state.lastResult.ssml,
-  });
+  populateVoices();
+  restorePreferences();
+  updateSliderLabels();
+  updateSummary();
+  syncControlAvailability();
 
-  if (!result.canceled) {
-    addLog("SSML 已保存", `已保存到 ${result.filePath}。`);
-  }
-}
-
-function handleCopySsml() {
-  if (!state.lastResult) {
-    return;
-  }
-
-  window.desktopBridge.copyText(state.lastResult.ssml);
-  addLog("SSML 已复制", "本次提交给 Azure Speech 的 SSML 已复制到剪贴板。");
+  addLog(
+    "离线语音已就绪",
+    `已加载 ${state.voiceCatalog.length} 个可用系统语音，本版本无需 Azure Key。`
+  );
 }
 
 function bindEvents() {
@@ -615,11 +610,6 @@ function bindEvents() {
   });
 
   elements.formatSelect.addEventListener("change", () => {
-    updateSummary();
-    savePreferences();
-  });
-
-  elements.regionInput.addEventListener("input", () => {
     updateSummary();
     savePreferences();
   });
@@ -639,8 +629,6 @@ function bindEvents() {
   elements.synthesizeBtn.addEventListener("click", handleSynthesize);
   elements.resetBtn.addEventListener("click", handleReset);
   elements.saveAudioBtn.addEventListener("click", handleSaveAudio);
-  elements.saveSsmlBtn.addEventListener("click", handleSaveSsml);
-  elements.copySsmlBtn.addEventListener("click", handleCopySsml);
 
   elements.openTermsBtn.addEventListener("click", () => openLegalModal("terms"));
   elements.openPrivacyBtn.addEventListener("click", () => openLegalModal("privacy"));
@@ -676,7 +664,7 @@ function bindEvents() {
     renderConsentRecord();
     syncLegalGate();
     setBusy(false);
-    addLog("已完成首次确认", "已记录本机合规确认，可继续使用文本转语音功能。");
+    addLog("已完成首次确认", "已记录本机合规确认，可继续使用离线文本转语音功能。");
   });
 
   window.addEventListener("keydown", (event) => {
@@ -686,20 +674,18 @@ function bindEvents() {
   });
 }
 
-function init() {
-  populateVoices();
-  restorePreferences();
+async function init() {
   restoreLegalAcceptance();
-  updateSliderLabels();
-  updateSummary();
   bindEvents();
   clearResult();
   renderConsentRecord();
   syncConsentButton();
   syncLegalGate();
+  setStatus("加载离线引擎", "working");
+  await loadOfflineVoices();
   setBusy(false);
   setStatus("等待输入", "idle");
-  addLog("准备就绪", "本工具不会调用参考网站接口，请使用你自己的 Azure Speech 资源。");
+  addLog("准备就绪", "本版本使用本地离线语音，无需 Azure Key，也不会联网请求云端合成。");
 
   if (!state.legalAccepted) {
     addLog("等待首次确认", "请先阅读并确认用户协议、隐私政策和 AI 披露要求。");
@@ -710,4 +696,8 @@ window.addEventListener("beforeunload", () => {
   clearPreviewUrl();
 });
 
-init();
+init().catch((error) => {
+  console.error(error);
+  setStatus("初始化失败", "error");
+  addLog("初始化失败", error?.message || "离线语音初始化失败。", "error");
+});
