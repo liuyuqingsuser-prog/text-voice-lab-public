@@ -1,0 +1,11 @@
+node_modules/
+dist/
+release/
+release-backup/
+
+build/icon.png
+build/brand-icon.svg.png
+build/icons/
+
+.DS_Store
+*.log
